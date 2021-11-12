@@ -7,15 +7,33 @@ import game.oth.OthelloGame;
 import game.oth.OthelloPlayer;
 
 
+/**
+ * Egy Alfa-Beta Min-Max algoritmust megvalosíto jatekos.
+ */
 public class Agent extends OthelloPlayer
 {
+    /**
+     * A felepitett keresesi fa maximalis melysege.
+     */
     private static final int SEARCH_DEPTH = 5;
+    /**
+     * Az ellenfel szine. Csak cache celzattal.
+     */
     private final int m_OpponentColor;
 
 
+    /**
+     * Adatszerkezet a lepesek es az ezekbol keletkezo jatektablak osszecsatolasara.
+     */
     private static class BoardState
     {
+        /**
+         * A lepes, ami ezt az allast eredmenyezte.
+         */
         public final OthelloAction Action;
+        /**
+         * A tabla aktualis allapota.
+         */
         public final int[][] Board;
 
 
@@ -26,6 +44,11 @@ public class Agent extends OthelloPlayer
         }
 
 
+        /**
+         * A tabla heurisztikus erteke.
+         * @param playerColor az MI szine a tablan
+         * @return A tablan talalhato kulonbozo figurak kozotti darabszam elterest. Pozitiv, ha az Agentnek van tobb.
+         */
         public long HeuristicValue(final int playerColor)
         {
             final int otherColor = playerColor == OthelloGame.BLACK ? OthelloGame.WHITE : OthelloGame.BLACK;
@@ -64,7 +87,9 @@ public class Agent extends OthelloPlayer
             OthelloGame.setAction(board, prevAction.i, prevAction.j, color == OthelloGame.BLACK ? OthelloGame.WHITE : OthelloGame.BLACK);
         }
 
+        // A legjobb lepes minimax erteke
         long bestValue = 0;
+        // A legjobb lepes
         OthelloAction bestAction = null;
 
         for (int i = 0; i < board.length; i++)
@@ -76,7 +101,9 @@ public class Agent extends OthelloPlayer
                     final var action = new OthelloAction(i, j);
                     final var newBoard = Utils.copy(board);
                     OthelloGame.setAction(newBoard, i, j, color);
+                    // Az adott lepes minimax erteke
                     final var value = MinAlphaBeta(new BoardState(newBoard, action), SEARCH_DEPTH, Long.MIN_VALUE, Long.MAX_VALUE);
+                    // Ha ez jobb, mint az eddig ismert, csere
                     if (bestAction == null || bestValue < value)
                     {
                         bestValue = value;
@@ -91,13 +118,24 @@ public class Agent extends OthelloPlayer
     }
 
 
+    /**
+     * A MiniMax algoritmus maximalizalo aga.
+     * @param currentBoard a node, aminek a gyerekein a maximalizalast vegezzuk
+     * @param searchDepth az aktualis keresesi melyseg
+     * @param alpha az aktualis alpha ertek (nyereseg)
+     * @param beta az aktualis beta ertek (veszteseg)
+     * @return a tabla gyerekeinek MiniMax ertekenek maximumat.
+     */
     private long MaxAlphaBeta(final BoardState currentBoard, int searchDepth, long alpha, final long beta)
     {
+        /* Ha a elertuk a maximalis keresesi erteket, vagy esetleg tele a tabla,
+         * akkor a node egy level es visszaadjuk a tablajanak heurisztikus erteket. */
         if (searchDepth == 0 || Full(currentBoard.Board))
         {
             return currentBoard.HeuristicValue(color);
         }
 
+        // A legrosszabb, szurrealis eset
         var ret = Long.MIN_VALUE;
 
         for (int i = 0; i < currentBoard.Board.length; i++)
@@ -108,26 +146,44 @@ public class Agent extends OthelloPlayer
                 {
                     var child = new BoardState(Utils.copy(currentBoard.Board), new OthelloAction(i, j));
                     OthelloGame.setAction(child.Board, i, j, color);
+                    // Jobb legrosszabb esetet keresunk
                     ret = Math.max(ret, MinAlphaBeta(child, searchDepth - 1, alpha, beta));
+                    // Tobb a garantalt nyereseg, mint a veszteseg, 'vaghatunk'
                     if (ret >= beta)
                     {
                         return ret;
                     }
+                    // Az eddiginel jobb megoldast keressuk innentol
                     alpha = Math.max(alpha, ret);
                 }
             }
         }
+
+        /* Ha nem volt valid lepes (azaz maradt a legrosszabb eset), akkor
+         * egy levelet vizsgaltunk, ahol a tabla nincs tele, de mar nem lehet sehova lepni,
+         * igy a jateknak vege. Ekkor, mivel ez egy level, visszaterunk a tabla heurisztikus ertekevel. */
         return ret == Long.MIN_VALUE ? currentBoard.HeuristicValue(color) : ret;
     }
 
 
+    /**
+     * A MiniMax algoritmus minimalizalo aga.
+     * @param currentBoard a node, aminek a gyerekein a minimalizalast vegezzuk
+     * @param searchDepth az aktualis keresesi melyseg
+     * @param alpha az aktualis alpha ertek (nyereseg)
+     * @param beta az aktualis beta ertek (veszteseg)
+     * @return a tabla gyerekeinek MiniMax ertekenek minimuma.
+     */
     private long MinAlphaBeta(final BoardState currentBoard, int searchDepth, final long alpha, long beta)
     {
+        /* Ha a elertuk a maximalis keresesi erteket, vagy esetleg tele a tabla,
+         * akkor a node egy level es visszaadjuk a tablajanak heurisztikus erteket. */
         if (searchDepth == 0 || Full(currentBoard.Board))
         {
             return currentBoard.HeuristicValue(color);
         }
 
+        // A legjobb, szurrealis eset
         var ret = Long.MAX_VALUE;
 
         for (int i = 0; i < currentBoard.Board.length; i++)
@@ -138,7 +194,9 @@ public class Agent extends OthelloPlayer
                 {
                     var child = new BoardState(Utils.copy(currentBoard.Board), new OthelloAction(i, j));
                     OthelloGame.setAction(child.Board, i, j, m_OpponentColor);
+                    // Rosszabb legjobb esetet keresunk
                     ret = Math.min(ret, MaxAlphaBeta(child, searchDepth - 1, alpha, beta));
+                    // Kevesebb a garantalt veszteseg, mint a nyereseg, 'vaghatunk'
                     if (ret <= alpha)
                     {
                         return ret;
@@ -147,10 +205,18 @@ public class Agent extends OthelloPlayer
                 }
             }
         }
+
+        /* Ha nem volt valid lepes (azaz maradt a legrosszabb eset), akkor
+         * egy levelet vizsgaltunk, ahol a tabla nincs tele, de mar nem lehet sehova lepni,
+         * igy a jateknak vege. Ekkor, mivel ez egy level, visszaterunk a tabla heurisztikus ertekevel. */
         return ret == Long.MAX_VALUE ? currentBoard.HeuristicValue(color) : ret;
     }
 
 
+    /**
+     * @param board a vizsgalando tabla
+     * @return tele-e van-e (azaz nincs tobb ures mezo)
+     */
     private boolean Full(final int[][] board)
     {
         for (var row : board)
