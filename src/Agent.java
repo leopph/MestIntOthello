@@ -9,7 +9,7 @@ import game.oth.OthelloPlayer;
 
 public class Agent extends OthelloPlayer
 {
-    private static final int SEARCH_DEPTH = 4;
+    private static final int SEARCH_DEPTH = 5;
     private final int m_OpponentColor;
 
 
@@ -76,7 +76,7 @@ public class Agent extends OthelloPlayer
                     final var action = new OthelloAction(i, j);
                     final var newBoard = Utils.copy(board);
                     OthelloGame.setAction(newBoard, i, j, color);
-                    final var value = Min(new BoardState(newBoard, action), 0);
+                    final var value = MinAlphaBeta(new BoardState(newBoard, action), SEARCH_DEPTH, Long.MIN_VALUE, Long.MAX_VALUE);
                     if (bestAction == null || bestValue < value)
                     {
                         bestValue = value;
@@ -91,14 +91,14 @@ public class Agent extends OthelloPlayer
     }
 
 
-    private long Max(final BoardState currentBoard, int searchDepth)
+    private long MaxAlphaBeta(final BoardState currentBoard, int searchDepth, long alpha, final long beta)
     {
-        if (searchDepth == SEARCH_DEPTH || Full(currentBoard.Board))
+        if (searchDepth == 0 || Full(currentBoard.Board))
         {
             return currentBoard.HeuristicValue(color);
         }
 
-        Long ret = null;
+        var ret = Long.MIN_VALUE;
 
         for (int i = 0; i < currentBoard.Board.length; i++)
         {
@@ -108,26 +108,27 @@ public class Agent extends OthelloPlayer
                 {
                     var child = new BoardState(Utils.copy(currentBoard.Board), new OthelloAction(i, j));
                     OthelloGame.setAction(child.Board, i, j, color);
-                    var childMinValue = Min(child, searchDepth + 1);
-                    if (ret == null || ret < childMinValue)
+                    ret = Math.max(ret, MinAlphaBeta(child, searchDepth - 1, alpha, beta));
+                    if (ret >= beta)
                     {
-                        ret = childMinValue;
+                        return ret;
                     }
+                    alpha = Math.max(alpha, ret);
                 }
             }
         }
-        return ret == null ? currentBoard.HeuristicValue(color) : ret;
+        return ret == Long.MIN_VALUE ? currentBoard.HeuristicValue(color) : ret;
     }
 
 
-    private long Min(final BoardState currentBoard, int searchDepth)
+    private long MinAlphaBeta(final BoardState currentBoard, int searchDepth, final long alpha, long beta)
     {
-        if (searchDepth == SEARCH_DEPTH || Full(currentBoard.Board))
+        if (searchDepth == 0 || Full(currentBoard.Board))
         {
             return currentBoard.HeuristicValue(color);
         }
 
-        Long ret = null;
+        var ret = Long.MAX_VALUE;
 
         for (int i = 0; i < currentBoard.Board.length; i++)
         {
@@ -137,15 +138,16 @@ public class Agent extends OthelloPlayer
                 {
                     var child = new BoardState(Utils.copy(currentBoard.Board), new OthelloAction(i, j));
                     OthelloGame.setAction(child.Board, i, j, m_OpponentColor);
-                    var childMaxValue = Max(child, searchDepth + 1);
-                    if (ret == null || ret > childMaxValue)
+                    ret = Math.min(ret, MaxAlphaBeta(child, searchDepth - 1, alpha, beta));
+                    if (ret <= alpha)
                     {
-                        ret = childMaxValue;
+                        return ret;
                     }
+                    beta = Math.min(beta, ret);
                 }
             }
         }
-        return ret == null ? currentBoard.HeuristicValue(color) : ret;
+        return ret == Long.MAX_VALUE ? currentBoard.HeuristicValue(color) : ret;
     }
 
 
