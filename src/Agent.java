@@ -1,3 +1,4 @@
+///leopph,Loffler.Levente@stud.u-szeged.hu
 import java.util.Random;
 
 import game.engine.utils.Utils;
@@ -16,13 +17,34 @@ public class Agent extends OthelloPlayer
     {
         public final OthelloAction Action;
         public final int[][] Board;
-        public final BoardState Parent;
 
-        BoardState(final OthelloAction action, int[][] board, BoardState parent)
+
+        public BoardState(int[][] board, final OthelloAction action)
         {
             Action = action;
             Board = board;
-            Parent = parent;
+        }
+
+
+        public long HeuristicValue(final int playerColor)
+        {
+            final int otherColor = playerColor == OthelloGame.BLACK ? OthelloGame.WHITE : OthelloGame.BLACK;
+            long ret = 0;
+            for (var row : Board)
+            {
+                for (var tile : row)
+                {
+                    if (tile == playerColor)
+                    {
+                        ret++;
+                    }
+                    else if (tile == otherColor)
+                    {
+                        ret--;
+                    }
+                }
+            }
+            return ret;
         }
     }
 
@@ -41,21 +63,42 @@ public class Agent extends OthelloPlayer
         {
             OthelloGame.setAction(board, prevAction.i, prevAction.j, color == OthelloGame.BLACK ? OthelloGame.WHITE : OthelloGame.BLACK);
         }
-        var currentBoardState = new BoardState(prevAction, board, null);
-        var preferredAction = Max(currentBoardState, 0).Action;
-        OthelloGame.setAction(board, preferredAction.i, preferredAction.j, color);
-        return preferredAction;
+
+        long bestValue = 0;
+        OthelloAction bestAction = null;
+
+        for (int i = 0; i < board.length; i++)
+        {
+            for (int j = 0; j < board.length; j++)
+            {
+                if (OthelloGame.isValid(board, i, j , color))
+                {
+                    final var action = new OthelloAction(i, j);
+                    final var newBoard = Utils.copy(board);
+                    OthelloGame.setAction(newBoard, i, j, color);
+                    final var value = Min(new BoardState(newBoard, action), 0);
+                    if (bestAction == null || bestValue < value)
+                    {
+                        bestValue = value;
+                        bestAction = new OthelloAction(i, j);
+                    }
+                }
+            }
+        }
+
+        OthelloGame.setAction(board, bestAction.i, bestAction.j, color);
+        return bestAction;
     }
 
 
-    private BoardState Max(final BoardState currentBoard, int searchDepth)
+    private long Max(final BoardState currentBoard, int searchDepth)
     {
         if (searchDepth == SEARCH_DEPTH || Full(currentBoard.Board))
         {
-            return currentBoard;
+            return currentBoard.HeuristicValue(color);
         }
 
-        BoardState ret = null;
+        Long ret = null;
 
         for (int i = 0; i < currentBoard.Board.length; i++)
         {
@@ -63,29 +106,28 @@ public class Agent extends OthelloPlayer
             {
                 if (OthelloGame.isValid(currentBoard.Board, i, j, color))
                 {
-                    var childBoard = Utils.copy(currentBoard.Board);
-                    OthelloGame.setAction(childBoard, i, j, color);
-                    var child = new BoardState(new OthelloAction(i, j), childBoard, currentBoard);
-                    var childMin = Min(child, searchDepth + 1);
-                    if (ret == null || Value(ret.Board, color) < Value(childMin.Board, color))
+                    var child = new BoardState(Utils.copy(currentBoard.Board), new OthelloAction(i, j));
+                    OthelloGame.setAction(child.Board, i, j, color);
+                    var childMinValue = Min(child, searchDepth + 1);
+                    if (ret == null || ret < childMinValue)
                     {
-                        ret = child;
+                        ret = childMinValue;
                     }
                 }
             }
         }
-        return ret == null ? currentBoard : ret;
+        return ret == null ? currentBoard.HeuristicValue(color) : ret;
     }
 
 
-    private BoardState Min(final BoardState currentBoard, int searchDepth)
+    private long Min(final BoardState currentBoard, int searchDepth)
     {
         if (searchDepth == SEARCH_DEPTH || Full(currentBoard.Board))
         {
-            return currentBoard;
+            return currentBoard.HeuristicValue(color);
         }
 
-        BoardState ret = null;
+        Long ret = null;
 
         for (int i = 0; i < currentBoard.Board.length; i++)
         {
@@ -93,40 +135,17 @@ public class Agent extends OthelloPlayer
             {
                 if (OthelloGame.isValid(currentBoard.Board, i, j, m_OpponentColor))
                 {
-                    var childBoard = Utils.copy(currentBoard.Board);
-                    OthelloGame.setAction(childBoard, i, j, m_OpponentColor);
-                    var child = new BoardState(new OthelloAction(i, j), childBoard, currentBoard);
-                    var childMax = Max(child, searchDepth + 1);
-                    if (ret == null || Value(ret.Board, m_OpponentColor) > Value(childMax.Board, m_OpponentColor))
+                    var child = new BoardState(Utils.copy(currentBoard.Board), new OthelloAction(i, j));
+                    OthelloGame.setAction(child.Board, i, j, m_OpponentColor);
+                    var childMaxValue = Max(child, searchDepth + 1);
+                    if (ret == null || ret > childMaxValue)
                     {
-                        ret = child;
+                        ret = childMaxValue;
                     }
                 }
             }
         }
-        return ret == null ? currentBoard : ret;
-    }
-
-
-    private long Value(final int[][] board, final int evalColor)
-    {
-        final int otherColor = evalColor == color ? m_OpponentColor : color;
-        long ret = 0;
-        for (var row : board)
-        {
-            for (var tile : row)
-            {
-                if (tile == evalColor)
-                {
-                    ret++;
-                }
-                else if (tile == otherColor)
-                {
-                    ret--;
-                }
-            }
-        }
-        return ret;
+        return ret == null ? currentBoard.HeuristicValue(color) : ret;
     }
 
 
