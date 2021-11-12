@@ -69,12 +69,12 @@ public class Agent extends OthelloPlayer
                     var childMin = Min(child, searchDepth + 1);
                     if (ret == null || Value(ret.Board, color) < Value(childMin.Board, color))
                     {
-                        ret = childMin;
+                        ret = child;
                     }
                 }
             }
         }
-        return ret;
+        return ret == null ? currentBoard : ret;
     }
 
 
@@ -99,12 +99,12 @@ public class Agent extends OthelloPlayer
                     var childMax = Max(child, searchDepth + 1);
                     if (ret == null || Value(ret.Board, m_OpponentColor) > Value(childMax.Board, m_OpponentColor))
                     {
-                        ret = childMax;
+                        ret = child;
                     }
                 }
             }
         }
-        return ret;
+        return ret == null ? currentBoard : ret;
     }
 
 
