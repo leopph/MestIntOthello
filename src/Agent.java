@@ -15,7 +15,7 @@ public class Agent extends OthelloPlayer
     /**
      * A felepitett keresesi fa maximalis melysege.
      */
-    private static final int SEARCH_DEPTH = 5;
+    private static final int SEARCH_DEPTH = 4;
     /**
      * Az ellenfel szine. Csak cache celzattal.
      */
